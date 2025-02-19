@@ -146,12 +146,8 @@ class AccessibilityNodeInfoDumper {
             for (int i = 0; i < count; i++) {
                 AccessibilityNodeInfo child = node.getChild(i);
                 if (child != null) {
-                    if (child.isVisibleToUser()) {
-                        dumpNodeRec(child, serializer, i, width, height, maxDepth-1);
-                        child.recycle();
-                    } else {
-                        Log.i(TAG, String.format("Skipping invisible child: %s", child));
-                    }
+                    dumpNodeRec(child, serializer, i, width, height, maxDepth-1);
+                    child.recycle();
                 } else {
                     Log.i(TAG, String.format("Null child %d/%d, parent: %s", i, count, node));
                 }
