@@ -26,6 +26,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+class GlobalUtils {
+    public static final boolean Build_VERSION_CODES_LOLLIPOP = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;
+    public static final boolean Build_VERSION_CODES_R = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
+    public static final boolean Build_VERSION_CODES_N = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N;
+    public static final boolean Build_VERSION_CODES_O = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
+}
 class AccessibilityNodeInfoDumper {
 
     private static final String TAG = AccessibilityNodeInfoDumper.class.getSimpleName();
@@ -45,10 +51,11 @@ class AccessibilityNodeInfoDumper {
             serializer.startDocument("UTF-8", true);
             serializer.startTag("", "hierarchy"); // TODO(allenhair): Should we use a namespace?
             serializer.attribute("", "rotation", Integer.toString(device.getDisplayRotation()));
-
+            
+            int diwidth=device.getDisplayWidth();
+            int diheight=device.getDisplayHeight();
             for (AccessibilityNodeInfo root : getWindowRoots(device)) {
-                dumpNodeRec(root, serializer, 0, device.getDisplayWidth(),
-                            device.getDisplayHeight(), maxDepth);
+                dumpNodeRec(root, serializer, 0, diwidth, diheight, maxDepth);
             }
 
             serializer.endTag("", "hierarchy");
@@ -66,15 +73,12 @@ class AccessibilityNodeInfoDumper {
         AccessibilityNodeInfo activeRoot = uiAutomation.getRootInActiveWindow();
         if (activeRoot != null) {
             roots.add(activeRoot);
-        } else {
-            Log.w(TAG, "Active window root not found.");
-        }
+        } 
         // Support multi-window searches for API level 21 and up.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (GlobalUtils.Build_VERSION_CODES_LOLLIPOP) {
             for (final AccessibilityWindowInfo window : getWindows(uiAutomation)) {
                 final AccessibilityNodeInfo root = window.getRoot(); // AccessibilityNodeInfoHelper.Api21Impl.getRoot(window);
                 if (root == null) {
-                    Log.w(TAG, "Skipping null root node for window: " + window);
                     continue;
                 }
                 roots.add(root);
@@ -86,12 +90,13 @@ class AccessibilityNodeInfoDumper {
     @SdkSuppress(minSdkVersion = 21)
     private static List<AccessibilityWindowInfo> getWindows(UiAutomation uiAutomation) {
         // Support multi-display searches for API level 30 and up.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (GlobalUtils.Build_VERSION_CODES_R) {
             final List<AccessibilityWindowInfo> windowList = new ArrayList<>();
             final SparseArray<List<AccessibilityWindowInfo>> allWindows =
                     uiAutomation.getWindowsOnAllDisplays();
                     //AccessibilityNodeInfoHelper.Api30Impl.getWindowsOnAllDisplays(uiAutomation);
-            for (int index = 0; index < allWindows.size(); index++) {
+            int allwinsize=allWindows.size();
+            for (int index = 0; index < allwinsize; index++) {
                 windowList.addAll(allWindows.valueAt(index));
             }
             return windowList;
@@ -104,19 +109,28 @@ class AccessibilityNodeInfoDumper {
             int width, int height, int maxDepth) throws IOException {
         serializer.startTag("", "node");
         if (!nafExcludedClass(node) && !nafCheck(node))
-            serializer.attribute("", "NAF", Boolean.toString(true));
+            {serializer.attribute("", "NAF", Boolean.toString(true));}
         serializer.attribute("", "index", Integer.toString(index));
         try {
-            serializer.attribute("", "text", safeCharSeqToString(node.getText()));
-            serializer.attribute("", "resource-id", safeCharSeqToString(node.getViewIdResourceName()));
-            serializer.attribute("", "class", safeCharSeqToString(node.getClassName()));
-            serializer.attribute("", "package", safeCharSeqToString(node.getPackageName()));
-            serializer.attribute("", "content-desc", safeCharSeqToString(node.getContentDescription()));
+                serializer.attribute("", "text", safeCharSeqToString(node.getText()));
         } catch (IllegalArgumentException e) {
-            // java.lang.IllegalArgumentException: Illegal character (U+0)
-            // TODO: maybe the best way is to update safeCharSeqToString
-            e.printStackTrace();
-        }
+                }
+        try {
+                serializer.attribute("", "resource-id", safeCharSeqToString(node.getViewIdResourceName()));
+        } catch (IllegalArgumentException e) {
+                }
+        try {
+                serializer.attribute("", "class", safeCharSeqToString(node.getClassName()));
+        } catch (IllegalArgumentException e) {
+                }
+        try {
+                serializer.attribute("", "package", safeCharSeqToString(node.getPackageName()));
+        } catch (IllegalArgumentException e) {
+                }
+        try {
+                serializer.attribute("", "content-desc", safeCharSeqToString(node.getContentDescription()));
+        } catch (IllegalArgumentException e) {
+                }
         serializer.attribute("", "checkable", Boolean.toString(node.isCheckable()));
         serializer.attribute("", "checked", Boolean.toString(node.isChecked()));
         serializer.attribute("", "clickable", Boolean.toString(node.isClickable()));
@@ -130,14 +144,14 @@ class AccessibilityNodeInfoDumper {
         serializer.attribute("", "visible-to-user", Boolean.toString(node.isVisibleToUser()));
         serializer.attribute("", "bounds", AccessibilityNodeInfoHelper.getVisibleBoundsInScreen(
                 node, width, height, false).toShortString());
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        if (GlobalUtils.Build_VERSION_CODES_N) {
             serializer.attribute("", "drawing-order",
                     Integer.toString(Api24Impl.getDrawingOrder(node)));
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (GlobalUtils.Build_VERSION_CODES_O) {
             serializer.attribute("", "hint", safeCharSeqToString(Api26Impl.getHintText(node)));
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (GlobalUtils.Build_VERSION_CODES_R) {
             serializer.attribute("", "display-id",
                     Integer.toString(Api30Impl.getDisplayId(node)));
         }
@@ -148,8 +162,6 @@ class AccessibilityNodeInfoDumper {
                 if (child != null) {
                     dumpNodeRec(child, serializer, i, width, height, maxDepth-1);
                     child.recycle();
-                } else {
-                    Log.i(TAG, String.format("Null child %d/%d, parent: %s", i, count, node));
                 }
             }
         }
@@ -235,7 +247,8 @@ class AccessibilityNodeInfoDumper {
     private static String stripInvalidXMLChars(CharSequence cs) {
         StringBuilder ret = new StringBuilder();
         char ch;
-        for (int i = 0; i < cs.length(); i++) {
+        int cslen=cs.length();
+        for (int i = 0; i < cslen; i++) {
             ch = cs.charAt(i);
             // http://www.w3.org/TR/xml11/#charsets
             if ((ch >= 0x0 && ch <= 0x8)
