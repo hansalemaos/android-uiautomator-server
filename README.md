@@ -1,4 +1,5 @@
-# Purpose
+# This fork shows also elements that are not visible to the user
+
 [![Android CI](https://github.com/openatx/android-uiautomator-server/actions/workflows/android.yml/badge.svg)](https://github.com/openatx/android-uiautomator-server/actions/workflows/android.yml)
 
 [UIAutomator](http://developer.android.com/tools/testing/testing_ui.html) is a
